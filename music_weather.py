@@ -1,14 +1,25 @@
 import requests
-tmdb_key = "4074661223a7154e97157a33b54948dc"
-client_id = "912c892ecb874c09a4939943600d6d81"
-client_secret = "a0b75db20a2845df98e0f0fe01ff9a2b"
+import os
+from dotenv import load_dotenv
+import csv
+from datetime import datetime
+
+load_dotenv('keys.env')
+tmdb_key = os.environ.get('tmdb_key')
+client_id = os.environ.get('client_id')
+client_secret = os.environ.get('client_secret')
+print(client_id)
 
 def get_coordinates(city):
-    response = requests.get(f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=10&language=en&format=json")
-    data = response.json()
-    city_latitude = data['results'][0]['latitude']
-    city_longitude = data['results'][0]['longitude']
-    return city_latitude, city_longitude
+    try :
+        response = requests.get(f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=10&language=en&format=json")
+        data = response.json()
+        city_latitude = data['results'][0]['latitude']
+        city_longitude = data['results'][0]['longitude']
+        return city_latitude, city_longitude
+    except NameError, KeyError:
+        print (f"{city}, could not be found")
+        return None, None
 
 def current_temp(city_latitude, city_longitude):
     temp_response = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={city_latitude}&longitude={city_longitude}&current=temperature_2m")
@@ -46,8 +57,16 @@ def search_artist(genre):
     artist_name = search_data['artists']['items'][0]['name']
     return artist_name
 
+def save_to_csv(city, temperature, artist):
+    with open("music_weather.csv", 'a', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow([datetime.now(), city, temperature, artist])
+
 def music_weather(city):
     city_latitude, city_longitude = get_coordinates(city)
+    if city_latitude is None and city_longitude is None:
+        print ("city could not be found")
+        return
     temperature = current_temp(city_latitude, city_longitude)
     genre = get_mood(temperature)
     artist_name = search_artist(genre)
@@ -56,13 +75,7 @@ def music_weather(city):
     print(f"Mood: {genre}")
     print(f"Top artist: {artist_name}")
     print("===============================")
-
-
-
-
-
-
-
+    save_to_csv(city, temperature, genre)
 
 access_token = get_spotify_token()
 headers = {"Authorization": f"Bearer {access_token}"}
@@ -72,3 +85,4 @@ music_weather("london")
 music_weather("seattle")
 music_weather("rosario")
 music_weather("qatar")
+music_weather("ruira")
